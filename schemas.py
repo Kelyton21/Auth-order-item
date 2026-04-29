@@ -34,3 +34,30 @@ class ItemSchema(BaseModel):
     size: str
     class Config:
         from_attributes = True
+
+class ItemResponse(BaseModel):
+    id: int
+    name: str
+    price: float
+    size: str
+    class Config:
+        from_attributes = True
+
+class OrderItemResponse(BaseModel):
+    id: int
+    order_id: int
+    item_id: int
+    quantity: int
+    total: float
+    item: Optional[ItemResponse] = None
+    class Config:
+        from_attributes = True
+
+class OrderResponse(BaseModel):
+    id: int
+    user_id: int
+    total: float
+    status: str
+    items: List[OrderItemResponse]
+    class Config:
+        from_attributes = True

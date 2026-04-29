@@ -1,18 +1,29 @@
+from typing import List
+from sqlalchemy.orm import joinedload
 from models import User
 from dependencies import get_session
 from fastapi import APIRouter, Depends, HTTPException
-from schemas import OrderSchema
+from schemas import OrderSchema, OrderResponse
 from models import Order, Item, OrderItem
+from dependencies import verificar_token
 
+order_router = APIRouter(prefix='/orders', tags=['orders'],dependencies=[Depends(verificar_token)])
 
-order_router = APIRouter(prefix='/orders', tags=['orders'])
-
-@order_router.get('/')
-async def get_orders(Sessao=Depends(get_session)):
+@order_router.get('/', response_model=List[OrderResponse])
+async def get_orders(Sessao=Depends(get_session),usuario_id = Depends(verificar_token)):
     """
     Endpoint para obter todos os pedidos cadastrados no banco de dados
     """
-    return Sessao.query(Order).all()
+    usuario = Sessao.query(User).filter(User.id==usuario_id).first()
+    existe_pedido = Sessao.query(Order).filter(Order.user_id == usuario_id).first()
+    if not usuario:
+        raise HTTPException(status_code=404, detail=f"Usuario {usuario_id} não encontrado")
+    if usuario.admin == True:
+        return Sessao.query(Order).options(joinedload(Order.items).joinedload(OrderItem.item)).all()
+    if not existe_pedido:
+        raise HTTPException(status_code=404, detail=f"Nenhum pedido encontrado para o usuario {usuario_id}")
+    else:
+        return Sessao.query(Order).options(joinedload(Order.items).joinedload(OrderItem.item)).filter(Order.user_id==usuario_id).all()
 
 @order_router.post('/create')
 async def create_order(pedido: OrderSchema, Sessao=Depends(get_session)):
@@ -49,3 +60,18 @@ async def create_order(pedido: OrderSchema, Sessao=Depends(get_session)):
         return {"message": "Pedido criado com sucesso", "order_id": novo_pedido.id, "total": total_geral}
     else:
         raise HTTPException(status_code=400, detail="Erro na criacao do Pedido")
+
+@order_router.delete("/{order_id}")
+async def delete_order(order_id: int,Sessao=Depends(get_session),usuario_id = Depends(verificar_token)):
+    # verificar se o pedido pertence ao usuario 
+    # verificar se o user é admin
+    pedido = Sessao.query(Order).filter(Order.id==order_id).first()
+    usuario = Sessao.query(User).filter(User.id==usuario_id).first()
+    if not pedido:
+        raise HTTPException(status_code=404, detail=f"Pedido {order_id} não encontrado")
+    if usuario_id != pedido.user_id or usuario.is_admin == False:
+        raise HTTPException(status_code=401, detail="Acesso negado")
+
+    pedido.status = "CANCELADO"
+    Sessao.commit()
+    raise HTTPException(status_code=200, detail=f"Pedido {order_id} cancelado com sucesso")

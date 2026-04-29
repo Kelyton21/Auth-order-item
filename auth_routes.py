@@ -79,7 +79,7 @@ async def register(usuario: UserSchema, Sessao=Depends(get_session)):
         raise HTTPException(status_code=200, detail= f"Usuario {usuario.email} cadastrado com sucesso!")
 
 @auth_router.get('/refresh')
-async def refresh(usuario_id:int = Depends(verificar_token)):
+async def refresh(usuario_id: int = Depends(verificar_token)):
     token = create_token(usuario_id)
     return {
         "access_token": token,
