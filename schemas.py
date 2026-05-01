@@ -21,6 +21,9 @@ class OrderItemCreate(BaseModel):
     item_id: int
     quantity: int
 
+    def calculate_total(self, price: float):
+        return price * self.quantity
+
 class OrderSchema(BaseModel):
     user_id: int
     status: Optional[str] = "PENDING"
@@ -60,4 +63,4 @@ class OrderResponse(BaseModel):
     status: str
     items: List[OrderItemResponse]
     class Config:
-        from_attributes = True
+        from_attributes = True
